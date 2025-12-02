@@ -4,6 +4,9 @@
 #include "optick.h"
 #include "world.h"
 #include <stacktrace>
+#include <optional>
+#include <thread>
+#include "network.h"
 
 void init_world(SDL_Renderer* renderer, World& world);
 void render_world(SDL_Window* window, SDL_Renderer* renderer, World& world);
@@ -36,6 +39,70 @@ int main(int argc, char* argv[])
         SDL_DestroyWindow(window);
         SDL_Quit();
         return 1;
+    }
+    PlayerId playerId = PlayerId::Invalid;
+    PlayerId teammateId = PlayerId::Invalid;
+    int userID = -1;
+    for (int i = 1; i < argc; i++) {
+        int value;
+        if (sscanf(argv[i], "--player_id=%d", &value) == 1) {
+            std::cout << "--player_id=" << value << std::endl;
+            if (value == 1)
+            {
+                playerId = PlayerId::Player1;
+                teammateId = PlayerId::Player2;
+            }
+            else if (value == 2)
+            {
+                playerId = PlayerId::Player2;
+                teammateId = PlayerId::Player1;
+            }
+        }
+    }
+    std::optional<Network> network;
+    std::thread recvThread;
+    bool handshakeSent = false;
+    bool handshakeReceived = false;
+    if (playerId != PlayerId::Invalid) {
+        network = Network();
+        if (!network->Init(GetPortForPlayer(playerId))) {
+            std::cerr << "Failed to initialize network\n";
+            return 1;
+        }
+
+        recvThread = std::thread([&]()
+        {
+            char buffer[1024];
+
+            while (true)
+            {
+                size_t bytes;
+
+                if (network->Receive(buffer, sizeof(buffer), bytes))
+                {
+                    std::cout << std::string_view(buffer, buffer + bytes) << std::endl;
+                    handshakeReceived = true;
+                }
+            }
+        });
+    }
+    std::string text;
+    std::getline(std::cin, text); // flush
+
+    while (network && !handshakeSent)
+    {
+        std::cout << "> ";
+        std::getline(std::cin, text);
+
+        if (text == "exit")
+            break;
+
+        network->Send(text.data(), text.size(), "127.0.0.1", GetPortForPlayer(teammateId));
+        handshakeSent = true;
+    }
+    while (!handshakeReceived)
+    {
+        SDL_Delay(100);
     }
 
     {
@@ -78,6 +145,7 @@ int main(int argc, char* argv[])
             SDL_RenderPresent(renderer);
         }
     }
+    network.reset();
 
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);

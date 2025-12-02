@@ -21,7 +21,32 @@
       "args": [],
       "cwd": "${workspaceFolder}",
       "preLaunchTask": "cmake build Release",
-    }
+    },
+    {
+      "name": "Launch Debug User 1",
+      "type": "cppvsdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/build/Debug/AdvancedProgramming.exe",
+      "args": ["--player_id=1"],
+      "cwd": "${workspaceFolder}",
+      "preLaunchTask": "cmake build Debug",
+    },
+    {
+      "name": "Launch Debug User 2",
+      "type": "cppvsdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/build/Debug/AdvancedProgramming.exe",
+      "args": ["--player_id=2"],
+      "cwd": "${workspaceFolder}",
+      "preLaunchTask": "cmake build Debug",
+    },
 
+
+  ],
+  "compounds": [
+    {
+      "name": "Launch 2 players Debug",
+      "configurations": ["Launch Debug User 1", "Launch Debug User 2"]
+    }
   ]
 }
